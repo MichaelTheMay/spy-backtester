@@ -1,4 +1,4 @@
-from dash import Dash, dcc, html, Input, Output
+from dash import Dash, dcc, html, Input, Output, State
 from .visualizer import create_plot_figure
 from .data_handler import fetch_spy_data
 from .backtest_logic import run_backtest
@@ -18,27 +18,45 @@ def create_dash_app():
 
     # App layout
     app.layout = html.Div([
-        html.H1("SPY Investment Strategy Backtest", style={"textAlign": "center"}),
+        html.H1("SPY Investment Strategy Backtest", style={"textAlign": "center", "font-family": "Arial, sans-serif", "margin-bottom": "20px"}),
         html.Div([
-            html.Label("Initial Contribution ($):"),
-            dcc.Input(id="initial-contribution", type="number", value=1000, step=100),
-            html.Label("Monthly Contribution ($):"),
-            dcc.Input(id="monthly-contribution", type="number", value=100, step=10),
-            html.Button("Run Backtest", id="run-backtest", n_clicks=0)
-        ], style={"margin-bottom": "20px"}),
-        dcc.Graph(id="contributions-graph"),
-        html.Div(id="backtest-result", style={"textAlign": "center", "margin-top": "20px"})
+            html.Div([
+                html.Label("Main Strategy: Initial Contribution ($):", style={"font-weight": "bold", "font-family": "Arial, sans-serif"}),
+                dcc.Input(id="initial-contribution", type="number", value=1000, step=100, style={"margin-bottom": "10px"}),
+                html.Label("Main Strategy: Monthly Contribution ($):", style={"font-weight": "bold", "font-family": "Arial, sans-serif"}),
+                dcc.Input(id="monthly-contribution", type="number", value=100, step=10, style={"margin-bottom": "10px"}),
+                html.Label("Custom Start Date (YYYY-MM-DD):", style={"font-family": "Arial, sans-serif"}),
+                dcc.Input(id="start-date", type="text", value="2000-01-01", style={"margin-bottom": "10px"}),
+                html.Label("Custom End Date (YYYY-MM-DD):", style={"font-family": "Arial, sans-serif"}),
+                dcc.Input(id="end-date", type="text", value="2020-01-01", style={"margin-bottom": "10px"})
+            ], style={"width": "45%", "display": "inline-block", "padding": "10px", "border": "1px solid #ddd", "border-radius": "5px", "background-color": "#f9f9f9", "vertical-align": "top"}),
+
+            html.Div([
+                html.Label("Alternative Strategy: Initial Contribution ($):", style={"font-weight": "bold", "font-family": "Arial, sans-serif"}),
+                dcc.Input(id="alt-initial-contribution", type="number", value=1000, step=100, style={"margin-bottom": "10px"}),
+                html.Label("Alternative Strategy: Monthly Contribution ($):", style={"font-weight": "bold", "font-family": "Arial, sans-serif"}),
+                dcc.Input(id="alt-monthly-contribution", type="number", value=200, step=10, style={"margin-bottom": "10px"}),
+                html.Button("Run Backtest", id="run-backtest", n_clicks=0, style={"margin-top": "10px", "background-color": "#007BFF", "color": "white", "border": "none", "padding": "10px 15px", "border-radius": "5px", "cursor": "pointer"})
+            ], style={"width": "45%", "display": "inline-block", "padding": "10px", "border": "1px solid #ddd", "border-radius": "5px", "background-color": "#f9f9f9", "vertical-align": "top"})
+        ], style={"margin-bottom": "20px", "display": "flex", "justify-content": "space-between"}),
+
+        dcc.Graph(id="contributions-graph", style={"border": "1px solid #ddd", "border-radius": "5px", "padding": "10px", "background-color": "#fff"}),
+        html.Div(id="backtest-result", style={"textAlign": "center", "margin-top": "20px", "font-family": "Arial, sans-serif", "font-size": "16px", "color": "#333"})
     ])
 
     # Callbacks
     @app.callback(
         [Output("contributions-graph", "figure"),
          Output("backtest-result", "children")],
-        [Input("run-backtest", "n_clicks"),
-         Input("initial-contribution", "value"),
-         Input("monthly-contribution", "value")]
+        [Input("run-backtest", "n_clicks")],
+        [State("initial-contribution", "value"),
+         State("monthly-contribution", "value"),
+         State("start-date", "value"),
+         State("end-date", "value"),
+         State("alt-initial-contribution", "value"),
+         State("alt-monthly-contribution", "value")]
     )
-    def update_graph(n_clicks, initial_contribution, monthly_contribution):
+    def update_graph(n_clicks, initial_contribution, monthly_contribution, start_date, end_date, alt_initial_contribution, alt_monthly_contribution):
         if n_clicks > 0:
             try:
                 logger.info("Executing backtest via GUI.")
@@ -46,8 +64,23 @@ def create_dash_app():
                 if history.empty:
                     return {}, "Error fetching SPY data."
 
+                # Filter historical data by custom date range
+                history = history.loc[start_date:end_date]
+                if history.empty:
+                    return {}, "No data available for the specified date range."
+
+                # Main strategy
                 contributions_df = run_backtest(history, initial_contribution, monthly_contribution)
                 fig = create_plot_figure(contributions_df)
+
+                # Alternative strategy (if provided)
+                if alt_initial_contribution and alt_monthly_contribution:
+                    alt_contributions_df = run_backtest(history, alt_initial_contribution, alt_monthly_contribution)
+                    alt_fig = create_plot_figure(alt_contributions_df)
+
+                    # Combine figures
+                    fig["data"].extend(alt_fig["data"])
+                    fig["layout"].update(title="Portfolio Value vs Contributions (Comparison)")
 
                 return fig, "Backtest complete!"
             except Exception as e:
