@@ -44,17 +44,16 @@ def create_dash_app():
         html.Div(id="backtest-result", style={"textAlign": "center", "margin-top": "20px", "font-family": "Arial, sans-serif", "font-size": "16px", "color": "#333"})
     ])
 
-    # Callbacks
     @app.callback(
         [Output("contributions-graph", "figure"),
-         Output("backtest-result", "children")],
+        Output("backtest-result", "children")],
         [Input("run-backtest", "n_clicks")],
         [State("initial-contribution", "value"),
-         State("monthly-contribution", "value"),
-         State("start-date", "value"),
-         State("end-date", "value"),
-         State("alt-initial-contribution", "value"),
-         State("alt-monthly-contribution", "value")]
+        State("monthly-contribution", "value"),
+        State("start-date", "value"),
+        State("end-date", "value"),
+        State("alt-initial-contribution", "value"),
+        State("alt-monthly-contribution", "value")]
     )
     def update_graph(n_clicks, initial_contribution, monthly_contribution, start_date, end_date, alt_initial_contribution, alt_monthly_contribution):
         if n_clicks > 0:
@@ -71,18 +70,28 @@ def create_dash_app():
 
                 # Main strategy
                 contributions_df = run_backtest(history, initial_contribution, monthly_contribution)
-                fig = create_plot_figure(contributions_df)
+                main_fig = create_plot_figure(contributions_df)
 
                 # Alternative strategy (if provided)
                 if alt_initial_contribution and alt_monthly_contribution:
                     alt_contributions_df = run_backtest(history, alt_initial_contribution, alt_monthly_contribution)
                     alt_fig = create_plot_figure(alt_contributions_df)
 
-                    # Combine figures
-                    fig["data"].extend(alt_fig["data"])
-                    fig["layout"].update(title="Portfolio Value vs Contributions (Comparison)")
+                    # Combine figures - ensure data is a list
+                    if not isinstance(main_fig["data"], list):
+                        main_fig["data"] = list(main_fig["data"])
+                    
+                    # Add alternative strategy traces
+                    if isinstance(alt_fig["data"], list):
+                        main_fig["data"].extend(alt_fig["data"])
+                    else:
+                        main_fig["data"].extend(list(alt_fig["data"]))
+                    
+                    main_fig["layout"].update(title="Portfolio Value vs Contributions (Comparison)")
 
-                return fig, "Backtest complete!"
+                return main_fig, "Backtest complete!"# Main strategy
+               
+
             except Exception as e:
                 logger.error(f"Error in GUI callback: {e}")
                 return {}, "An error occurred. Please try again."
