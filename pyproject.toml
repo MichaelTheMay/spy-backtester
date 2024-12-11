@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "spy-backtester"
+version = "0.1.0"
+description = "A GUI tool for backtesting SPY investment strategies"
+authors = ["Michael May <michael.mm.may@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+matplotlib = "^3.9.3"
+pandas = "^2.2.3"
+yfinance = "^0.2.50"
+
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^7.1.1"
+black = "^24.10.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
