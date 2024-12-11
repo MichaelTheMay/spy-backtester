@@ -1,27 +1,60 @@
-import matplotlib.pyplot as plt
 
-def plot_contributions(contributions_df):
+# visualizer.py
+import plotly.graph_objs as go
+from dash import Dash, dcc, html
+from .logger import setup_logger
+
+logger = setup_logger("visualizer")
+
+def create_dash_app(contributions_df):
     """
-    Plot the total contributions and total portfolio value over time.
+    Create a Dash app to visualize the backtest results.
 
     Args:
         contributions_df (pd.DataFrame): DataFrame containing 'Total Contributions' and 'Total Value'.
 
     Returns:
-        matplotlib.figure.Figure: A Matplotlib figure object.
+        Dash: A Dash application.
     """
-    # Create a new figure and axis for the plot
-    fig, ax = plt.subplots(figsize=(8, 5))
+    try:
+        logger.info("Creating Dash app for contributions and portfolio value visualization.")
+        app = Dash(__name__)
 
-    # Plot total contributions and total value from the DataFrame
-    contributions_df.plot(ax=ax, color=["blue", "green"], linewidth=2)
+        app.layout = html.Div([
+            html.H1("SPY Investment Backtest Results", style={"textAlign": "center"}),
 
-    # Add labels, title, and grid for better readability
-    ax.set_title("Investment Backtest Results", fontsize=14)
-    ax.set_xlabel("Months", fontsize=12)
-    ax.set_ylabel("Value ($)", fontsize=12)
-    ax.legend(["Total Contributions", "Total Value"], fontsize=10)
-    ax.grid(True)
+            dcc.Graph(
+                id="contributions-graph",
+                figure={
+                    "data": [
+                        go.Scatter(
+                            x=contributions_df.index,
+                            y=contributions_df["Total Contributions"],
+                            mode="lines",
+                            name="Total Contributions",
+                            line=dict(color="blue", width=2)
+                        ),
+                        go.Scatter(
+                            x=contributions_df.index,
+                            y=contributions_df["Total Value"],
+                            mode="lines",
+                            name="Total Portfolio Value",
+                            line=dict(color="green", width=2)
+                        )
+                    ],
+                    "layout": go.Layout(
+                        title="Portfolio Value vs Contributions",
+                        xaxis=dict(title="Date", tickformat="%Y"),
+                        yaxis=dict(title="Value ($)"),
+                        template="plotly_white"
+                    )
+                }
+            )
+        ])
 
-    # Return the figure object for rendering in the GUI
-    return fig
+        logger.info("Dash app successfully created.")
+        return app
+
+    except Exception as e:
+        logger.error(f"Error creating Dash app: {e}")
+        raise
